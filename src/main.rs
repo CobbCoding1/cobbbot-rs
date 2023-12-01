@@ -10,7 +10,6 @@ fn read_file(filename: &str) -> String {
 }
 
 fn handle_commands(client: &mut Client, commands: Vec<&str>, help_string: &str) {
-
     match commands[0] {
         "!help" => {
             client.private_message(help_string);
@@ -85,7 +84,7 @@ fn main() {
 
     let mut help_string = String::new();
     for (command, desc) in &help {
-        help_string.push_str(&format!("{}: {} --- ", command, desc));
+        help_string.push_str(&format!("{}: {} KAPOW ", command, desc));
     }
 
     let password = read_file(CLIENT);
