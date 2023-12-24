@@ -9,59 +9,73 @@ fn read_file(filename: &str) -> String {
     data
 }
 
-fn handle_commands(client: &mut Client, commands: Vec<&str>, help_string: &str) {
+fn handle_commands(client: &mut Client, commands: Vec<&str>, help_string: &str) -> Result<(), ClientErrors> {
     match commands[0] {
         "!help" => {
-            client.private_message(help_string);
+            client.private_message(help_string)?;
         },
         "!ping" => {
-            client.private_message("PONG!");
+            client.private_message("PONG!")?;
         },
         "!today" => {
             let data = read_file(TODAY);
-            client.private_message(&data);
+            client.private_message(&data)?;
         },
         "!socials" => {
             client.private_message(
             "X (Twitter): https://x.com/cobbcoding, YouTube: https://youtube.com/@cobbcoding, GitHub: https://github.com/CobbCoding1"
-            );
+            )?;
         },
         "!yt" => {
-            client.private_message("https://youtube.com/@cobbcoding");
+            client.private_message("https://youtube.com/@cobbcoding")?;
         },
         "!discord" => {
-            client.private_message("https://discord.gg/3SkpwrRxpA");
+            client.private_message("https://discord.gg/3SkpwrRxpA")?;
         },
         "!sub" => {
-            client.private_message("https://www.twitch.tv/subs/cobbcoding");
+            client.private_message("https://www.twitch.tv/subs/cobbcoding")?;
         },
         "!69" => {
-            client.private_message("nice");
+            client.private_message("nice")?;
         },
         "!nice" => {
-            client.private_message("69");
+            client.private_message("69")?;
         },
         "!specs" => {
-            client.private_message("specs: i5 2400, 12GB RAM, Radeon R7 260X. Arch Linux BTW");
+            client.private_message("specs: i5 2400, 12GB RAM, Radeon R7 260X. Arch Linux BTW")?;
         },
         "!surprise" => {
-            client.private_message("Enjoy your surpise: https://www.youtube.com/watch?v=xvFZjo5PgG0");
+            client.private_message("Enjoy your surpise: https://www.youtube.com/watch?v=xvFZjo5PgG0")?;
         },
         "!time" => {
             let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
             let time_str = time.to_string();
             let actual_time = &time_str[0..(time_str.len() - 3)];
             let output = std::process::Command::new("date").arg(format!("-d @{}", actual_time)).output().expect("Could not execute command");
-            client.private_message(&format!("{}", String::from_utf8_lossy(&output.stdout)));
+            client.private_message(&format!("{}", String::from_utf8_lossy(&output.stdout)))?;
         },
         "!say" => {
-            client.private_message(&commands[1..commands.len()].join(" "));
+            client.private_message(&commands[1..commands.len()].join(" "))?;
         },
         _ => {
             if commands[0].chars().nth(0) == Some('!') {
-                client.private_message(&format!("Unknown command {}", commands[0]));
+                client.private_message(&format!("Unknown command {}", commands[0]))?;
             } 
         },
+    }
+    Ok(())
+}
+
+fn run(help_string: &str) -> Result<(), ClientErrors> {
+    let password = read_file(CLIENT);
+    let mut client = Client::new("irc.twitch.tv", "6667", "cobbcoding")?;
+    client.auth("cobbbot", &password)?;
+    client.join()?;
+    loop {
+        if let Some(msg) = client.read_message()? {
+            let commands: Vec<&str> = msg.message.split_whitespace().collect();
+            handle_commands(&mut client, commands, &help_string)?;
+        }
     }
 }
 
@@ -87,22 +101,11 @@ fn main() {
         help_string.push_str(&format!("{}: {} KAPOW ", command, desc));
     }
 
-    let password = read_file(CLIENT);
-    if let Ok(mut client) = Client::new("irc.twitch.tv", "6667", "cobbcoding") {
-        client.auth("cobbbot", &password);
-        client.join();
-
-        loop {
-            match client.read_message() {
-                Ok(msg) => {
-                    let commands: Vec<&str> = msg.message.split_whitespace().collect();
-                    handle_commands(&mut client, commands, &help_string);
-                },
-                Err(ClientErrors::ReadError) => panic!("Could not read from stream"),
-                Err(_) => {},
-            } 
+    match run(&help_string) {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(1);
         }
-    } else {
-        panic!("could not connect");
     }
 }
